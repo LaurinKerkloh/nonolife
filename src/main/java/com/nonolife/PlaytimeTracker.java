@@ -8,11 +8,13 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 
 public class PlaytimeTracker {
-    LocalDate firstJoin;
-    long playtime;
+    private LocalDate firstJoin;
+    private long playtime;
 
-    LocalDate currentWeek;
-    long currentWeekPlaytime;
+    private LocalDate currentWeek;
+    private long currentWeekPlaytime;
+
+    boolean showBossBar;
 
     public static final Codec<PlaytimeTracker> CODEC = RecordCodecBuilder.create(instance -> instance.group(
             Codec.STRING.xmap(string -> LocalDate.parse(string), date -> date.toString()).fieldOf("first_join")
@@ -20,7 +22,8 @@ public class PlaytimeTracker {
             Codec.LONG.fieldOf("playtime").forGetter(PlaytimeTracker::getPlaytime),
             Codec.STRING.xmap(string -> LocalDate.parse(string), date -> date.toString()).fieldOf("current_week")
                     .forGetter(PlaytimeTracker::getCurrentWeek),
-            Codec.LONG.fieldOf("current_week_playtime").forGetter(PlaytimeTracker::getCurrentWeekPlaytime))
+            Codec.LONG.fieldOf("current_week_playtime").forGetter(PlaytimeTracker::getCurrentWeekPlaytime),
+            Codec.BOOL.fieldOf("show_boss_bar").forGetter(PlaytimeTracker::isShowBossBar))
             .apply(instance,
                     PlaytimeTracker::new));
 
@@ -30,14 +33,17 @@ public class PlaytimeTracker {
 
         currentWeek = LocalDate.now().with(DayOfWeek.MONDAY);
         currentWeekPlaytime = 0;
+        showBossBar = true;
     }
 
-    public PlaytimeTracker(LocalDate firstJoin, long playtime, LocalDate currentWeek, long currentWeekPlaytime) {
+    public PlaytimeTracker(LocalDate firstJoin, long playtime, LocalDate currentWeek, long currentWeekPlaytime,
+            boolean showBossBar) {
         this.firstJoin = firstJoin;
         this.playtime = playtime;
 
         this.currentWeek = currentWeek;
         this.currentWeekPlaytime = currentWeekPlaytime;
+        this.showBossBar = showBossBar;
     }
 
     public long getPlaytime() {
@@ -56,6 +62,10 @@ public class PlaytimeTracker {
         return currentWeekPlaytime;
     }
 
+    public boolean isShowBossBar() {
+        return showBossBar;
+    }
+
     public void addPlaytime(int seconds) {
         playtime += seconds;
 
@@ -67,16 +77,16 @@ public class PlaytimeTracker {
         }
     }
 
-    public long allowedPlaytime() {
-        return daysSinceBeginningOfWeek() * 3600;
+    public long allowedPlaytime(long dailyPlaytime) {
+        return daysSinceBeginningOfWeek() * dailyPlaytime;
     }
 
-    public long remainingPlaytime() {
+    public long remainingPlaytime(long dailyPlaytime) {
         if (!hasPlayedThisWeek()) {
-            return allowedPlaytime();
+            return allowedPlaytime(dailyPlaytime);
         }
 
-        return allowedPlaytime() - currentWeekPlaytime;
+        return allowedPlaytime(dailyPlaytime) - currentWeekPlaytime;
     }
 
     private LocalDate beginningOfCurrentWeek() {
