@@ -14,16 +14,14 @@ import net.minecraft.world.scores.DisplaySlot;
 import net.minecraft.world.scores.Objective;
 import net.minecraft.world.scores.criteria.ObjectiveCriteria;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.google.gson.Gson;
 
 public class NoNoLife implements ModInitializer {
     public static final String MOD_ID = "nonolife";
@@ -75,10 +73,38 @@ public class NoNoLife implements ModInitializer {
         // Run code every 20 ticks (~1 second)
         tickCounter = 0;
 
-        // Update playtime for every online player
+        addPlaytime();
+        countPlaytimeOnlinePlayers(server);
+
+    }
+
+    private void addPlaytime() {
+        LocalTime now = LocalTime.now();
+        LocalDate today = LocalDate.now();
+        LocalTime addPlaytimeAt = LocalTime.of(config.addPlaytimeAtHour, 0);
+
+        LocalDate addUntil = (now.isAfter(addPlaytimeAt)) ? today : today.minusDays(1);
+
+        int addForXDays = (int) ChronoUnit.DAYS.between(savedData.getLastPlaytimeAddition(), addUntil);
+
+        if (addForXDays <= 0) {
+            return;
+        }
+
+        savedData.getPlayerMap().forEach((uuid, playtimeTracker) -> {
+            playtimeTracker.addPlaytime(config.dailyPlaytime * addForXDays, config.maximumPlaytime);
+        });
+        savedData.setLastPlaytimeAddition(addUntil);
+
+        savedData.setDirty();
+    }
+
+    // Update playtime for every online player
+    private void countPlaytimeOnlinePlayers(MinecraftServer server) {
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-            PlaytimeTracker playtimeTracker = savedData.playtimeTrackerForPlayer(player.getUUID());
-            long remainingPlaytime = playtimeTracker.remainingPlaytime(config.dailyPlaytime);
+            PlaytimeTracker playtimeTracker = savedData.getOrCreatePlaytimeTrackerForPlayer(player.getUUID(),
+                    config.initialPlaytime);
+            int remainingPlaytime = playtimeTracker.getAvailablePlaytime();
             if (remainingPlaytime <= 0) {
                 player.connection.disconnect(
                         Component.literal("Playtime Limit reached. You can play again tomorrow."));
@@ -88,15 +114,17 @@ public class NoNoLife implements ModInitializer {
             notifyPlayer(remainingPlaytime, player);
 
             scoreboard.getOrCreatePlayerScore(player, remainingPlaytimeObjective)
-                    .set((int) playtimeTracker.getPlaytime() / 3600);
+                    .set((int) playtimeTracker.getTotalPlaytime() / 3600);
 
             updateBossBarForPlayer(player, remainingPlaytime, playtimeTracker.isShowBossBar());
 
-            playtimeTracker.addPlaytime(1);
+            playtimeTracker.playedFor(1);
+
+            savedData.setDirty();
         }
     }
 
-    private void notifyPlayer(long remainingPlaytime, ServerPlayer player) {
+    private void notifyPlayer(int remainingPlaytime, ServerPlayer player) {
         if (remainingPlaytime == 300) {
             player.sendSystemMessage(Component.literal("You have 5 minutes of playtime left."));
         }
@@ -119,7 +147,7 @@ public class NoNoLife implements ModInitializer {
         }
     }
 
-    private void updateBossBarForPlayer(ServerPlayer player, long remainingPlaytime, boolean isShown) {
+    private void updateBossBarForPlayer(ServerPlayer player, int remainingPlaytime, boolean isShown) {
         ServerBossEvent bar = bossBars.get(player);
 
         if (!isShown) {

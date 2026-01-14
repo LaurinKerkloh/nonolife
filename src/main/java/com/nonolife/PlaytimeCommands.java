@@ -31,7 +31,7 @@ class PlaytimeCommands {
             return 0;
         }
         NoNoLifeSavedData.get(context.getSource().getServer())
-                .playtimeTrackerForPlayer(player.getUUID()).showBossBar = true;
+                .getPlaytimeTrackerForPlayer(player.getUUID()).showBossBar = true;
         return Command.SINGLE_SUCCESS;
     }
 
@@ -45,7 +45,7 @@ class PlaytimeCommands {
         }
 
         NoNoLifeSavedData.get(context.getSource().getServer())
-                .playtimeTrackerForPlayer(player.getUUID()).showBossBar = false;
+                .getPlaytimeTrackerForPlayer(player.getUUID()).showBossBar = false;
         return Command.SINGLE_SUCCESS;
     }
 }

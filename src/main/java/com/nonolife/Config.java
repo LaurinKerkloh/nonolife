@@ -9,7 +9,10 @@ import com.google.gson.Gson;
 import net.minecraft.server.MinecraftServer;
 
 class Config {
-    long dailyPlaytime = 3600;
+    int dailyPlaytime = 3600;
+    int initialPlaytime = 3600;
+    int maximumPlaytime = 3600 * 4;
+    int addPlaytimeAtHour = 4;
 
     public static Config load(MinecraftServer server) {
         Path configFile = server.getServerDirectory().resolve("config").resolve("nonolife.json");
