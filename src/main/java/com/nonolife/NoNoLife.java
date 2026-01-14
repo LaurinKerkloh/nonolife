@@ -32,7 +32,7 @@ public class NoNoLife implements ModInitializer {
     Config config;
     NoNoLifeSavedData savedData;
     ServerScoreboard scoreboard;
-    Objective remainingPlaytimeObjective;
+    Objective totalPlaytimeObjective;
     Map<ServerPlayer, ServerBossEvent> bossBars = new HashMap<>();
 
     @Override
@@ -53,15 +53,17 @@ public class NoNoLife implements ModInitializer {
 
         // setup scoreboard
         scoreboard = server.getScoreboard();
-        remainingPlaytimeObjective = scoreboard.getObjective("remaining_playtime");
-        if (remainingPlaytimeObjective == null) {
-            // Create a new one if it doesn't exist
-            remainingPlaytimeObjective = scoreboard.addObjective("remaining_playtime", ObjectiveCriteria.DUMMY,
-                    Component.literal("Remaining Playtime (min)"), ObjectiveCriteria.RenderType.INTEGER, true,
-                    null);
+        totalPlaytimeObjective = scoreboard.getObjective("total_playtime");
+        if (config.showTotalPlaytime && totalPlaytimeObjective == null) {
+            totalPlaytimeObjective = scoreboard.addObjective("total_playtime", ObjectiveCriteria.DUMMY,
+                    Component.literal("Total Playtime (h)"), ObjectiveCriteria.RenderType.INTEGER, true, null);
+            scoreboard.setDisplayObjective(DisplaySlot.LIST, totalPlaytimeObjective);
         }
 
-        scoreboard.setDisplayObjective(DisplaySlot.LIST, remainingPlaytimeObjective);
+        if (!config.showTotalPlaytime && totalPlaytimeObjective != null) {
+            scoreboard.removeObjective(totalPlaytimeObjective);
+        }
+
     }
 
     private void onTick(MinecraftServer server) {
@@ -113,8 +115,10 @@ public class NoNoLife implements ModInitializer {
 
             notifyPlayer(remainingPlaytime, player);
 
-            scoreboard.getOrCreatePlayerScore(player, remainingPlaytimeObjective)
-                    .set((int) playtimeTracker.getTotalPlaytime() / 3600);
+            if (config.showTotalPlaytime) {
+                scoreboard.getOrCreatePlayerScore(player, totalPlaytimeObjective)
+                        .set((int) playtimeTracker.getTotalPlaytime() / 3600);
+            }
 
             updateBossBarForPlayer(player, remainingPlaytime, playtimeTracker.isShowBossBar());
 

@@ -13,6 +13,7 @@ class Config {
     int initialPlaytime = 3600;
     int maximumPlaytime = 3600 * 4;
     int addPlaytimeAtHour = 4;
+    boolean showTotalPlaytime = true;
 
     public static Config load(MinecraftServer server) {
         Path configFile = server.getServerDirectory().resolve("config").resolve("nonolife.json");
